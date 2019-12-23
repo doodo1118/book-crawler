@@ -1,6 +1,6 @@
 // brand 88 256~ 
-const puppeteer = require("puppeteer");
-const mysql = require("mysql");
+// const puppeteer = require("puppeteer");
+// const mysql = require("mysql");
 const links = require("./links");
 
 
