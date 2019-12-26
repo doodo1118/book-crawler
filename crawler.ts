@@ -4,9 +4,6 @@
 const links = require("./links");
 
 
-// loop links
-// check whether new series are there 
-
 (async function main() {
     try{
 

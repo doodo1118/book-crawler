@@ -12,9 +12,6 @@ async function setDatabase(){
 }
 
 
-
-
-
 interface Item{}
 
 class Book implements Item{
@@ -23,73 +20,53 @@ class Book implements Item{
     author : String;
     publisher : String;
     publicationYear : String;
+    link : String;
 
-    constructor( coverImage :String, title :String, author :String, publisher :String, publicationYear :String ){
+    constructor( coverImage :String, title :String, author :String, publisher :String, publicationYear :String, link :String ){
         this.coverImage = coverImage;
         this.title = title;
         this.author = author;
         this.publisher = publisher;
         this.publicationYear = publicationYear;
+        this.link = link;
     };
 }
 
 
-interface Crawler {
-    items : Item[];
-
-    selectors :{
-        ofItemWrap : String;
-        ofCoverImage : String;
-        ofTitle : String;
-        ofAuthor : String;
-        ofPublisher? : String;
-        ofPublicationYear? : String;
-        ofSiteLink? : String;
-
-        ofSearchInput : String;
-
-        ofNextPage : String;
-    }
-
-    setPuppeteer(): void;
-    crawlItemTitledAs(title: String) : void;
-    crawlItemsInPageOf(targetPage : String) : void;
-    saveItemsToDatabase(items : Item[]) : void;
-}
-
-class BookCrawler implements Crawler{
+class Crawler{
+    
     database : Object;
 
     items : Item[];
 
-    baseUrl : String;
-    newProductsLocation : String[];
-
-    selectors :{
-        ofItemWrap : String;
-        ofCoverImage : String;
-        ofTitle : String;
-        ofAuthor : String;
-        ofPublisher : String;
-        ofPublicationYear : String;
-        ofSiteLink : String;
-
-        ofSearchInput : String;
-
-        ofNextPage : String;
+    config:{
+        baseUrl : String;
+        newProductsLocation : String[];
+    
+        selector :{
+            ofItemWrap : String;
+            ofCoverImage : String;
+            ofTitle : String;
+            ofAuthor : String;
+            ofPublisher : String;
+            ofPublicationYear : String;
+            ofLink : String;
+    
+            ofSearchInput : String;
+    
+            ofPageList : String;
+            ofNextPage : String;
+        }
     }
 
-    constructor(site:targetSite, item:Item){
-        this.baseUrl = site.baseUrl;
-        this.newProductsLocation = site.newProductsLocation;
-
-        this.selectors = site.selectors;
+    constructor( site:targetSite ){
+        this.config = site.config;
     }
     
 
     
     setPuppeteer(): void{
-
+        
     }
     crawlItemTitledAs (title : String) : void{
 
@@ -97,41 +74,51 @@ class BookCrawler implements Crawler{
     crawlItemsInPageOf (targetPage : String) : void{
         
     }
-    saveItemsToDatabase (items : Item[]):void{
-
+    saveItemsToDatabase ():void{
+        
     }
 }
+
 interface targetSite{
-    baseUrl : String;
-    newProductsLocation : String[];
-    selectors:{
-        ofItemWrap : String;
-        ofCoverImage : String;
-        ofTitle : String;
-        ofAuthor : String;
-        ofPublisher : String;
-        ofPublicationYear : String;
-        ofSiteLink : String;
-
-        ofSearchInput : String;
-
-        ofNextPage : String;
+    config:{
+        baseUrl : String;
+        newProductsLocation : String[];
+        selector:{
+            ofItemWrap : String;
+            ofCoverImage : String;
+            ofTitle : String;
+            ofAuthor : String;
+            ofPublisher : String;
+            ofPublicationYear : String;
+            ofLink : String;
+    
+            ofSearchInput : String;
+    
+            ofNextPage : String;
+            ofPageList : String;
+        }
     }
 }
+
 class Kyobo implements targetSite{
-    baseUrl : 'https://kyobobook.co.kr/';
-    newProductsLocation : ['newproduct/newProductList.laf?mallGb=KOR'];
-    selectors:{
-        ofItemWrap : String;
-        ofCoverImage : String;
-        ofTitle : String;
-        ofAuthor : String;
-        ofPublisher : String;
-        ofPublicationYear : String;
-        ofSiteLink : String;
+    config:{
 
-        ofSearchInput : "input.main_input";
+        baseUrl : 'https://kyobobook.co.kr/';
+        newProductsLocation : ['newproduct/newProductList.laf?mallGb=KOR'];
+        selector:{
+            ofItemWrap : 'li.detailli  || div.info_area';
+            ofCoverImage : 'div.cover_wrap img.src';
+            ofTitle : 'div.title strong.text';
+            ofAuthor : 'span.author.text';
+            ofPublisher : 'span.publication.text';
+            ofPublicationYear : 'span.publication.text.trim()';
+            ofLink : 'div.title a.href';
+    
+            ofSearchInput : "input.main_input";
+    
+            ofNextPage : 'div.list_paging a.btn_next';
+            ofPageList : 'div.list_paging li a';
+        }
 
-        ofNextPage : String;
     }
 }
