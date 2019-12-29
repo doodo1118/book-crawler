@@ -1,88 +1,168 @@
-// brand 88 256~ 
-// const puppeteer = require("puppeteer");
-// const mysql = require("mysql");
-const links = require("./links");
+const puppeteer = require('puppeteer');
+// const mysql = require('mysql');
+
+// async function setDatabase(){
+//     const connection = await mysql.createConnection({
+//         host: 'localhost', 
+//         user: 'root',
+//         database: 'p3',
+//         password: 'mysql',
+//         charset: 'utf8', 
+//     })
+// }
 
 
-(async function main() {
-    try{
+interface Item{}
 
-        const connection = await mysql.createConnection({
-            host: 'localhost', 
-            user: 'root',
-            database: 'p3',
-            password: 'mysql',
-            charset: 'utf8', 
-        })
+class Book implements Item{
+    coverImage : String;
+    title : String;
+    author : String;
+    publisher : String;
+    publicationYear : String;
+    link : String;
 
-        const latest_season = links.vogue.season[links.vogue.season.length-1];
-        const link = links.vogue.site + latest_season;
+    constructor( coverImage :String, title :String, author :String, publisher :String, publicationYear :String, link :String ){
+        this.coverImage = coverImage;
+        this.title = title;
+        this.author = author;
+        this.publisher = publisher;
+        this.publicationYear = publicationYear;
+        this.link = link;
+    };
+}
 
-        //browser setting
-        const browser = await puppeteer.launch({ headless:false});
-        const page = await browser.newPage();
-        await page.setViewport({width: 0, height: 0});
 
-        await page.goto(link,  {waitUntil: 'load', timeout: 0});
-        await page.waitForSelector("li.tab-list--item__brand");   
-        const lis = await page.$$("li.tab-list--item__brand");
+class Crawler{
+    browser;
+    page;
 
-        // for( const li of lis){
-        for(let i=256; i<lis.length; i++){
-            let count =0;
-        
-            await page.goto('https://www.vogue.com/fashion-shows/spring-2020-ready-to-wear',  {waitUntil: 'load', timeout: 0});
-            await page.waitForSelector("li.tab-list--item__brand");   
-            const lis = await page.$$("li.tab-list--item__brand");
+    database : Object;
+    items : Item[];
 
-            const [brand_name, link_to_brand] = await lis[i].$eval('a', a=>[a.innerText, a.getAttribute("href")]);
-            
-            // brand list 저장
-            // connection.query(
-            //     `INSERT INTO brands(brand_id) VALUES('${brand_name}')`,
-            //     function(err, results){
-            //         console.log(err);
-            //         console.log(results);
-            //     }
-            // )
+    targetSite : targetSite;
 
-            await page.goto(link_to_brand, {timeout:0});
-
-            // click 왜안돼
-            // const brand_name = await li.$eval("a", a=>a.innerText);
-            // await li.click();
-            
-
-            
-            // depth 2
-            await page.waitForSelector("div.gallery-marker", {timeout:0});
-            const gallery_marker_div = await page.$("div.gallery-marker");
-            await gallery_marker_div.click();
-
-            // depth 3 
-            await page.waitForSelector("button.gallery--thumbnails--handle", {timeout:0});
-            const gallery_thumbnails_handle_button = await page.$("button.gallery--thumbnails--handle");
-            await gallery_thumbnails_handle_button.click();
-
-            // change view in depth 3
-            await page.waitForSelector("div.lazyload-wrapper", {timeout:0});
-            await page.waitFor(5000);
-            const lazyload_wrappers = await page.$$("div.lazyload-wrapper");
-            for(const lazyload_wrapper of lazyload_wrappers){
-                const style_img_link = await lazyload_wrapper.$eval("img", img=>img.getAttribute("data-original"));
-                // save into database
-                connection.query(`INSERT INTO style(brand_id, image_small) VALUE( "${brand_name}", "${style_img_link}" )`);
-                
-                count++
-                console.log("brand", i, brand_name, count);
-                
-            }
-        }
-        
-        
-        
-    }catch(e){
-        console.log('our error', e);
+    constructor( targetSite:targetSite ){
+        console.log(targetSite );
+        this.targetSite = targetSite;
     }
     
-})();
+    async setPuppeteer(){
+        this.browser = await puppeteer.launch({ headless:false});
+        this.page = await this.browser.newPage();
+        await this.page.setViewport({width: 0, height: 0});
+    }
+    async crawlItemTitledAs (title : String) {
+        this.crawlItemsInPageOf( this.targetSite.search(title) );
+        // parseItemInformation();
+    }
+
+    async crawlNewProducts() {
+        let length = this.targetSite.newProductsLocation.length;
+
+        for(let i=0; i<length; i++){
+            this.crawlItemsInPageOf( this.targetSite.newProductsLocation[i] );
+        }
+    }
+    async crawlItemsInPageOf (targetPage : String) {
+        await this.page.goto( targetPage,  {waitUntil: 'load', timeout: 0} );
+        await this.page.waitForSelector( this.targetSite.selector.ofItemWrap );
+        let items = await this.page.$$(this.targetSite.selector.ofItemWrap);
+        
+
+        for(let item of items){
+
+            let itemInformation = {
+                title:"", author:"", coverImage:"", publisher:"", publicationYear:"",
+            };
+
+
+            itemInformation.title = await item.$eval(this.targetSite.selector.ofTitle, el=>el.innerText);
+            itemInformation.author = await item.$eval(this.targetSite.selector.ofAuthor, el=>el.innerText);
+            itemInformation.coverImage = await item.$eval(this.targetSite.selector.ofCoverImage, el=>el.getAttribute("src")); 
+            [itemInformation.publisher, itemInformation.publicationYear] = await item.$$eval(this.targetSite.selector.ofPublisher, els=>{ return [ els[0].innerText, els[1].innerText ] }); 
+            
+            console.log(itemInformation);
+            // save to database;
+        }
+
+    }
+    saveItemsToDatabase ():void{
+        
+    }
+}
+
+interface targetSite{
+
+    baseUrl : String;
+    newProductsLocation : String[];
+    searchUrl : String;
+
+    selector:{
+        ofItemWrap : String;
+        ofCoverImage : String;
+        ofTitle : String;
+        ofAuthor : String;
+        ofPublisher : String;
+        ofPublicationYear : String;
+        ofLink : String;
+
+        ofNextPage : String;
+        ofPageList : String;
+    };
+
+    search( title:String ) :String;
+    parsePublicationYear();
+    parseCoverImage(): String;
+    parseLink()
+}
+
+class Kyobo implements targetSite{
+
+    baseUrl = 'https://kyobobook.co.kr/';
+    newProductsLocation = ['https://kyobobook.co.kr/newproduct/newProductList.laf?mallGb=KOR'];
+    searchUrl= "https://search.kyobobook.co.kr/web/search?vPstrKeyWord=";
+
+    selector={
+            // li.detailli || 
+            ofItemWrap : 'div.info_area',
+            ofCoverImage : 'div.cover_wrap img',//src
+            ofTitle : 'div.title',
+            ofAuthor : 'span.author',
+            ofPublisher : 'span.publication',
+            ofPublicationYear : 'span.publication.text.trim()',
+            ofLink : 'div.title a.href',
+
+            ofNextPage : 'div.list_paging a.btn_next',
+            ofPageList : 'div.list_paging li a',
+        }
+
+
+    search(title:String) :String{
+        return this.searchUrl + title;
+    }
+
+    parsePublicationYear() {
+
+    }
+
+    parseCoverImage(): String{
+        return ""
+    }
+
+    parseLink(){
+
+    }
+}
+let kyobo = new Kyobo();
+console.log(kyobo);
+let kyoboCrawler = new Crawler(kyobo);
+
+async function a() {
+    await kyoboCrawler.setPuppeteer();
+    await kyoboCrawler.crawlItemTitledAs('typescript');
+};
+
+a();
+
+
